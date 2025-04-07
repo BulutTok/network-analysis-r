@@ -1,0 +1,192 @@
+---
+title: "Visualizing a network"
+
+
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#You can use the following function to clean your Rstudio environment  
+```{r}
+rm(list=ls())
+```
+
+```{r, message=FALSE, warning=FALSE}
+install.packages('ggraph')
+library(ggraph)
+library(igraph)
+```
+
+```{r}
+ggraph:::igraphlayouts
+```
+
+#Network analysis example
+
+```{r}
+df <- data.frame(
+  A = c("Berlin", "Amsterdam", "New York") , 
+  B = c("Munich", "Utrecht", "Chicago"))
+```
+
+
+```{r}
+df.g <- graph_from_data_frame (d = df, directed = FALSE)
+```
+
+
+```{r}
+plot(df.g, vertex.label = V(df.g)$name)
+```
+
+
+```{r}
+df.g %>%
+  ggraph(layout = "fr") +
+  geom_node_text(aes(label=V(df.g)$name ), size = 3) +
+  geom_edge_diagonal(color = "black", alpha = 0.5)
+  geom_edge_link(aes(edge_alpha = 0.5))
+```
+
+
+## Airbnb Example
+
+#Load the libraries
+```{r}
+library(dplyr)
+library(tidyr)
+library(tidytext)
+library(tidyverse)
+```
+
+#read in the data
+```{r}
+reviews_original <- read_csv("asheville_reviews.csv")
+```
+
+```{r}
+reviews <-reviews_original   %>% 
+  select (listing_id, comment_id=id,date ,reviewer_id,reviewer_name, comments)
+```
+
+
+# tokenize and pre-process the text (n=2)
+
+note: the code below may take few minutes to run
+```{r}
+reviews_bigrams <- reviews %>%
+  unnest_tokens(bigram, comments, token = "ngrams", n = 2)%>%
+  separate(bigram, c("word1", "word2"), sep = " ")%>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+```
+
+# count the bigrams
+```{r}
+bigram_counts <- reviews_bigrams %>% 
+  count(word1, word2, sort = TRUE)
+
+bigram_counts
+```
+
+
+### Visualizing a network of bigrams
+
+```{r, message=FALSE, warning=FALSE}
+#install.packages("igraph")
+library(igraph)
+```
+
+# filter for only relatively common combinations
+```{r}
+bigram_graph <- bigram_counts %>%
+  filter(n > 500) %>%
+  graph_from_data_frame()
+
+bigram_graph
+```
+
+
+We can convert an igraph object into a ggraph with the ggraph function.
+```{r, warning=FALSE, message=FALSE}
+#install.packages("ggraph")
+library(ggraph)
+```
+
+For a basic graph, we need to include the following layers: nodes, edges, and text.
+
+There are different networks layouts in a plot that can make them more readable. To see a list of possible layouts you can run:
+
+```{r}
+#ggraph:::igraphlayouts
+```
+
+
+```{r}
+set.seed(2017)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+```
+
+The results show us some details of the text structure.
+
+we can polish the graph by including some short statements:
+
+edges: showing directions with an arrow the end_cap option - tells the arrow to end before touching the node 
+nodes: show nodes with light blue points
+add a theme to the plot:
+
+```{r}
+set.seed(2016)
+
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n,edge_width=n), show.legend = FALSE,
+                 arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+```
+
+
+You may need to go through some iterations to get your plots into a nice format
+
+You can show edges as lines. For that you need to add a statement "directed = FALSE" to the function "graph_from_data_frame()"
+
+```{r}
+bigram_graph <- bigram_counts %>%
+  filter(n > 1000) %>%
+  graph_from_data_frame(directed = FALSE)
+
+set.seed(2016)
+
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n,edge_width=n), show.legend = FALSE,
+                 end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+```
+
+make the graph even look better:
+
+```{r}
+bigram_graph <- bigram_counts %>%
+  filter(n > 1000) %>%
+  graph_from_data_frame(directed = FALSE)
+
+set.seed(2016)
+ggraph(bigram_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n), edge_colour = "cyan4") +
+  geom_node_point(size=1) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)+
+  theme_void()
+```
+
+
