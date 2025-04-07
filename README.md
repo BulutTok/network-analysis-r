@@ -92,7 +92,7 @@ ashville-airbnb/
 
 For questions, feedback, or contributions, please reach out to:
 
-**Your Name**  
+**Bulut Tok**  
 Email: buluttok2013@gmail.com
 
 ## Acknowledgements
